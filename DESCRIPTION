@@ -1,0 +1,25 @@
+Package: tcrGraph
+Type: Package
+Title: Utilities for graph-based analysis of T cell receptors
+Version: 0.2.1
+Author: Mario Rosasco
+Maintainer: Mario Rosasco <mrosasco@benaroyaresearch.org>
+Description: A collection of tools to analyze T cell receptor features, based on building a similarity graph. In the graph representation, nodes represent individual TCR chains, and edges represent a shared feature of biological interest, such as nucleotide sequence or CDR3 amino acid sequence. Looking at TCRs in this way can be useful for inferring T cell clonality, and looking at patterns associated with antigen specificity.
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.2
+Imports: 
+  stringr,
+  dplyr (>= 1.0.0),
+  magrittr,
+  rlang,
+  igraph,
+  circlize (>= 0.4.8),
+  httr
+Suggests: 
+    knitr,
+    rmarkdown,
+    visNetwork,
+    testthat
+VignetteBuilder: knitr

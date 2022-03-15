@@ -1,0 +1,70 @@
+tcrGraph v0.2.1 (Release date: 2020-06-22)
+==============
+
+Changes:
+
+* Added legend show/hide  and mixed/numeric sort arguments to `makeCircos()`
+* Removed requirement that arc color annotation has to be one of segment track annotations
+
+tcrGraph v0.2.0 (Release date: 2020-06-15)
+==============
+
+Changes:
+
+* Added `makeCircos()` function to facilitate circos plotting
+
+tcrGraph v0.1.5 (Release date: 2020-03-13)
+==============
+
+Changes:
+
+* Fixed minor bug introduced by a change in tidyselect's order of operations
+
+tcrGraph v0.1.4 (Release date: 2019-09-26)
+==============
+
+Changes:
+
+* IMPORTANT UPDATE: Changed the way that `getClonesFromTcrGraph()` functions by default. Subgraphs/clones with more than `maxA/B/C/D` chains are now pruned by default to represent the most abundant clone with the max allowed chains. Please consult the documentation for more information. 
+* Added support for multi-point chain matching when generating a tcrGraph from data
+* Added ability to return a tcrGraph object from `getClonesFromTcrGraph()`
+* Added automated unit tests
+
+tcrGraph v0.1.3 (Release date: 2019-08-27)
+==============
+
+Changes:
+
+* Added visNetwork plotting function `makeVisNetwork()`
+
+tcrGraph v0.1.2.2 (Release date: 2019-07-29)
+==============
+
+Changes:
+
+* Added event logging with Research DB APIs
+
+tcrGraph v0.1.2.1 (Release date: 2019-07-26)
+==============
+
+Changes:
+
+* Minor update to tcrGraphToIgraph(), to attach cleaner and more compelte edge metadata to igraph object
+
+tcrGraph v0.1.2 (Release date: 2019-07-24)
+==============
+
+Changes:
+
+* Increased the data stored in the nodes data frame of a tcrGraph object for easier access
+* Implemented as.data.frame method for tcrGraph class
+
+tcrGraph v0.1.1 (Release date: 2019-07-17)
+==============
+
+Changes:
+
+* Initial release, implementing basic TCR graph functionality. Highlights include:
+  * tcrGraph S3 class and associated methods, including a simple plot() implementation
+  * makeTcrGraph() utility function
+  * getClonesFromTcrGraph() analysis function
