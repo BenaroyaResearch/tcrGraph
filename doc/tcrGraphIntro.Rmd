@@ -1,0 +1,194 @@
+---
+title: "Introduction to tcrGraph"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{tcrGraphIntro}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Purpose
+
+The goal of the `tcrGraph` package is to provide a consitent and user-friendly set of functions to analyze T cell receptor (TCR) data using a graph-based approach. This vignette demonstrates how to create a TCR graph and perform a basic analysis of the number of clones in the graph.
+
+## The `tcrGraph` Class
+
+The tcrGraph package defines a `tcrGraph` S3 class. You can read about the data requirements for instances of class objects using `?tcrGraph`, but most of the time it will be easiest to create a `tcrGraph` object using the function `makeTcrGraph()`. This function takes a data frame as an argument, which needs to have columns named "libid", "v_gene", "j_gene". The data frame also needs a column specified by `link` argument, which by default is "full_nt_sequence". 
+
+If you're constructing the data frame yourself, you need to make sure that these column names are set appropriately.
+
+## Creating `tcrGraph` Objects
+
+In the following example, we'll create a fake data set including one library with 2 TCR chains, an alpha and a beta. To avoid typing out the full nucleotide sequence for each chain, we'll pretend that the alpha chain has the sequence "CAT" and the beta chain has the sequence "GAT". These sequences will be used to define the nodes in the TCR graph.
+
+```{r tcrGraphSetup}
+library(tcrGraph)
+myTcrData <- data.frame(
+  libid = c("lib000", "lib000"), 
+  v_gene = c("TRAV1-1", "TRBV1"),
+  j_gene = c("TRAJ11", "TRBJ1-1"), 
+  fake_nt_sequence = c("CAT", "GAT")
+)
+myTcrGraph <- makeTcrGraph(myTcrData, link = "fake_nt_sequence")
+```
+
+## Displaying `tcrGraph` Objects
+
+The `tcrGraph` package implements base S3 class methods to create simple print and plot output for `tcrGraph` class objects. This means that you can use `print(x)` and `plot(x)` with your TCR graphs to generate simple summary information. 
+
+```{r showTcrGraph}
+print(myTcrGraph)
+
+plot(myTcrGraph)
+```
+
+Here we can see the graph contains the two chains, as expected, but the nodes are too small. By default, the size of each node is the number of times it's found in the dataset. Since each chain only occurs once in our test data, we can use the `nodeScalingFactor` argument to increase this size. We can also pass in a palette of 4 colors to define each chain using the `chainPalette` argument. Additional arguments can be passed through to the plotting function defined in the `igraph` package. Here we'll use the `main` argument to give the plot a title.
+
+```{r displayNicerGraph}
+plot(
+  myTcrGraph, 
+  nodeScalingFactor = 30,
+  chainPalette = c("orange", "cyan", "purple", "magenta"),
+  main = "TCR Graph Plot"
+)
+```
+
+## Counting Clones
+
+One of the main use cases for this package is to generate summary information about numbers of "clones" to help find interesting patterns in the TCR data. In this package, a clone is defined as the largest graph that isn't connected to any other graphs (possibly after some filtering, to be discussed in a minute), and the number of clones is the number of unique libraries found in that graph.
+
+Consider the following dataset:
+```{r tcrClonesGraphSetup}
+myTcrCloneData <- data.frame(
+  libid = c("lib000", "lib000", "lib001", "lib001", "lib002", "lib002"), 
+  v_gene = c("TRAV1-1", "TRBV1", "TRAV1-1", "TRBV1", "TRAV1-2", "TRBV2"),
+  j_gene = c("TRAJ11", "TRBJ1-1", "TRAJ11", "TRBJ1-1", "TRAJ12", "TRBJ1-2"), 
+  fake_nt_sequence = c("CAT", "GAT", "CAT", "GAT", "CAC", "GAG")
+)
+myTcrCloneGraph <- makeTcrGraph(myTcrCloneData, link = "fake_nt_sequence")
+plot(
+  myTcrCloneGraph,
+  nodeScalingFactor = 30,
+  chainPalette = c("orange", "cyan", "purple", "magenta"),
+  main = "TCR Clones Plot"
+)
+```
+
+From the data frame, we can see that there are 2 clones. One is made up of data from 1 library, and the other is made up of data from 2 libraries. The function `getClonesFromTcrGraph()` will generate summary information about these clones for us.
+
+```{r showCloneTable}
+getClonesFromTcrGraph(myTcrCloneGraph)
+```
+
+Sometimes in scRNAseq experiments that are used to generate TCR clone data, only one chain will be detected, as in the following example data for lib003. Because `getClonesFromTcrGraph()` considers the number of unique libraries in the clonal graph, these libs will still contribute to the total clone count. 
+
+```{r addSingleChainLib}
+myTcrCloneData <- rbind(
+  myTcrCloneData, 
+  data.frame(libid = "lib003", v_gene = "TRBV2", j_gene = "TRBJ1-2", fake_nt_sequence = "GAG")
+)
+myTcrCloneGraph <- makeTcrGraph(myTcrCloneData, link = "fake_nt_sequence")
+plot(
+  myTcrCloneGraph,
+  nodeScalingFactor = 30,
+  chainPalette = c("orange", "cyan", "purple", "magenta"),
+  main = "TCR Clones Plot"
+)
+getClonesFromTcrGraph(myTcrCloneGraph)
+```
+
+## Filtering Clones
+
+Sometimes in scRNAseq experiments, a library is generated from multiple cells, for example when multiple cells are accidentally sorted into the same well. This situation is represented in the following example data for lib004. Libraries like this shouldn't be considered as part of the clone graph, because they can create spurious connections between unique clones, as shown in the following plot.
+
+```{r addMultipleCellLib}
+myTcrCloneData <- rbind(
+  myTcrCloneData, 
+  data.frame(
+    libid = c("lib004", "lib004", "lib004", "lib004", "lib004"),
+    v_gene = c("TRBV2", "TRAV1-2", "TRBV1", "TRAV1-1", "TRAV1-3"),
+    j_gene = c("TRBJ1-2", "TRAJ12", "TRBJ1-1", "TRAJ11", "TRAJ13"),
+    fake_nt_sequence = c("GAG", "CAC", "GAT", "CAT", "TAC")
+  )
+)
+myTcrCloneGraph <- makeTcrGraph(myTcrCloneData, link = "fake_nt_sequence")
+plot(
+  myTcrCloneGraph,
+  nodeScalingFactor = 30,
+  chainPalette = c("orange", "cyan", "purple", "magenta"),
+  main = "TCR Clones Plot"
+)
+```
+
+To facilitate filtering out such multi-cell libraries, the `getClonesFromTcrGraph` function has arguments `maxA`, `maxB`, `maxD`, and `maxG`. These arguments set the maximum number of alpha, beta, delta, and gamma chains that are allowed in each clonal graph. If any of these values is set to -1, chains of this type will not be considered as part of the clonal graph at all. By default, the function allows for 2 alphas and 2 betas in a clone, and ignores gamma and delta chains. As a result, when we perform our clonal analysis, we'll still detect 2 clones, with 2 libraries each.
+
+```{r clonalAnalysisWithMultipleCellLib}
+getClonesFromTcrGraph(myTcrCloneGraph)
+```
+In some situations, you may want to consider networks of chains that exceed the `max[chain]` thresholds, while still excluding individual libraries that have more than the expected number of chains. To achieve this, the `getClonesFromTcrGraph` provides the arguments `maxALib`, `maxAGraph`, `maxBLib`, etc. By default the `max[chain]Lib` and `max[chain]Graph` arguments are set to the same values, but these can be manually changed to facilitate different types of analysis. For example in the code below we can exclude the data from lib004 while still considering the data from lib005. This type of analysis can be useful for identifying invariant chains that pair promiscuously, such as those found in MAIT cells.
+
+```{r filterAtLibLevel}
+myTcrCloneData <- rbind(
+  myTcrCloneData, 
+  data.frame(
+    libid = c("lib005", "lib005", "lib005"),
+    v_gene = c("TRBV3", "TRAV1-2", "TRBV4"),
+    j_gene = c("TRBJ1-3", "TRAJ12", "TRBJ1-4"),
+    fake_nt_sequence = c("GTG", "CAC", "GTT")
+  )
+)
+myTcrCloneGraph <- makeTcrGraph(myTcrCloneData, link = "fake_nt_sequence")
+getClonesFromTcrGraph(
+  myTcrCloneGraph,
+  maxALib = 2, 
+  maxBLib = 2,
+  maxAGraph = nrow(myTcrCloneData), # allow all observed chains to occupy a graph
+  maxBGraph = nrow(myTcrCloneData)
+)
+```
+
+## Formats for Clone Data
+
+The `getClonesFromTcrGraph` function has a `format` argument, which can be used to adjust how the clone information is returned. By default, the value of this argument is "compressed" which displays one clone per row with library information summarized in the columns, as we've seen above. If we want a data frame where each library is on its own row, we can set this argument to "full".
+
+```{r clonalAnalysisWithFullOutput}
+getClonesFromTcrGraph(myTcrCloneGraph, format = "full")
+```
+
+Note that just as in the "compressed" format, the `cloneCounts` and `cloneId` columns in the "full" format refer to *all* of the libraries. For example in this dataset, the "full" format data frame is telling us that there are two libraries found in the clone with `cloneId` of "clone1".
+
+The `format` argument can also be set to "tcrGraph", which reconstructs the graph representing the chains that pass the clone counting filters. This can be useful for plotting your clone data for a visual confirmation of your results.
+
+```{r clonalAnalysisWithGraphOutput}
+
+clonesToPlot <- getClonesFromTcrGraph(
+  myTcrCloneGraph,
+  maxALib = 2, 
+  maxBLib = 2,
+  maxAGraph = nrow(myTcrCloneData), # allow all observed chains to occupy a graph
+  maxBGraph = nrow(myTcrCloneData),
+  format = "tcrGraph"
+)
+
+plot(
+  clonesToPlot,
+  nodeScalingFactor = 30,
+  chainPalette = c("orange", "cyan", "purple", "magenta"),
+  main = "TCR Clones Plot"
+)
+```
+
+## Additional Plotting and Format Conversion Utilities
+
+There are a number of useful graph analysis and visualization packages available in R, and `tcrGraph` provides some utility functions to aid users who would like to use these packages. 
+
+- The `makeVisNetwork` function creates an interactive plot based on the [visNetwork](https://datastorm-open.github.io/visNetwork/) package. These plots are useful for interactive data browsing in a webpage or RStudio environment, as hovering over the nodes in the network will provide metadata about the chain represented in that node. The plot can be further customized using additional functions from the `visNetwork` package.
+- The `tcrGraphToGraphNEL` function converts a `tcrGraph` object to a `graphNEL` object as described in the [graph](http://www.bioconductor.org/packages/release/bioc/html/graph.html) package.
+- The `tcrGraphToIgraph` function converts a `tcrGraph` object to an `igraph` object as described in the [igraph](https://igraph.org/r/) package.
