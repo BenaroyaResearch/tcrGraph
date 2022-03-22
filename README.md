@@ -8,7 +8,7 @@ Open an R session, and execute the following code:
 
 ```R
 if (!require("devtools")) install.packages("devtools")
-devtools::install_github("BenaroyaResearch/tcrGraph")
+devtools::install_github("BenaroyaResearch/tcrGraph", build_vignettes = TRUE)
 ```
 
 ## Requirements
