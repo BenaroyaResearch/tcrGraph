@@ -6,4 +6,4 @@
   write(paste("Could not log event:", e), stderr())
 }
 
-.logEvent = function(event){return(TRUE)},
+.logEvent = function(event){return(TRUE)}
