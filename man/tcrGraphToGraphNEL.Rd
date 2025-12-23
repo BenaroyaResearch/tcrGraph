@@ -13,12 +13,12 @@ tcrGraphToGraphNEL(tcrGraph)
 an object of class 'graphNEL'
 }
 \description{
-From the graphNEL class description: "This is a class of graphs that are 
-represented in terms of nodes and an edge list. This is a suitable 
+From the graphNEL class description: "This is a class of graphs that are
+represented in terms of nodes and an edge list. This is a suitable
 representation for a graph with a large number of nodes and relatively few edges."
 }
 \details{
-Converting a tcrGraph to a graphNEL object enables the use of utility and 
+Converting a tcrGraph to a graphNEL object enables the use of utility and
 statistics functions from the \code{graph} package.
 
 Note that tcrGraph does not rely on the \code{graph} package, because it is unavailable in CRAN.

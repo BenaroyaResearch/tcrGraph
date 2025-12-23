@@ -3,19 +3,19 @@
 ## This file is part of the tcrGraph package
 
 #' Make a tcrGraph object
-#' 
+#'
 #' Accepts a dataframe containing TCR information, and generates a tcrGraph object
-#' 
+#'
 #' @param tcrDf a data frame that contains columns libid, v_gene, j_gene, and the column indicated by the \code{link} argument
 #' @param link a string or vector of strings indicating which column(s) to use to match chains. Default is "full_nt_sequence"
 #' @return an S3 object of class \code{tcrGraph}
-#' 
-#' @examples 
+#'
+#' @examples
 #' \dontrun{
 #' tcrData <- data.frame(
-#'    libid = c("lib000", "lib000"), 
-#'    v_gene = c("TRAV1-1", "TRBV1"), 
-#'    j_gene = c("TRAJ11", "TRBJ1-1"), 
+#'    libid = c("lib000", "lib000"),
+#'    v_gene = c("TRAV1-1", "TRBV1"),
+#'    j_gene = c("TRAJ11", "TRBJ1-1"),
 #'    fake_nt_sequence = c("CAT", "GAT")
 #' )
 #' makeTcrGraph(tcrData, link = "fake_nt_sequence")
@@ -23,7 +23,7 @@
 #' # Nodes defined by fake_nt_sequence
 #' # Number of nodes: 2
 #' # Number of edges: 2
-#' 
+#'
 #' makeTcrGraph(tcrData, link = c("v_gene", "fake_nt_sequence"))
 #' # An object of class 'tcrGraph'
 #' # Nodes defined by v_gene_fake_nt_sequence
@@ -45,7 +45,7 @@ makeTcrGraph <- function(tcrDf, link = "full_nt_sequence"){
     tcrDf[[collapsedLink]] <- apply(tcrDf[,link], 1, function(s){paste(s, collapse = "_")})
     link <- collapsedLink
   }
-  
+
   # collect chain info, node counts, and assign node IDs
   tcrDf <-
     tcrDf %>%
@@ -85,8 +85,8 @@ makeTcrGraph <- function(tcrDf, link = "full_nt_sequence"){
       !!link := .data$groupValue
     ) %>%
     dplyr::select(
-      .data$id, 
-      .data$value, 
+      .data$id,
+      .data$value,
       group = .data$chainTypes,
       .data$vGenes,
       .data$jGenes,
@@ -109,22 +109,22 @@ makeTcrGraph <- function(tcrDf, link = "full_nt_sequence"){
   return(tcrGraphResult)
 }
 
-#' Convert a tcrGraph obect to a graphNEL object 
-#' 
-#' From the graphNEL class description: "This is a class of graphs that are 
-#' represented in terms of nodes and an edge list. This is a suitable 
+#' Convert a tcrGraph obect to a graphNEL object
+#'
+#' From the graphNEL class description: "This is a class of graphs that are
+#' represented in terms of nodes and an edge list. This is a suitable
 #' representation for a graph with a large number of nodes and relatively few edges."
-#' 
-#' Converting a tcrGraph to a graphNEL object enables the use of utility and 
+#'
+#' Converting a tcrGraph to a graphNEL object enables the use of utility and
 #' statistics functions from the \code{graph} package.
-#' 
+#'
 #' Note that tcrGraph does not rely on the \code{graph} package, because it is unavailable in CRAN.
 #' However, the graph package may be useful for performing operations on TCR network graphs, and so this
 #' function is included for portability.
-#' 
+#'
 #' @param tcrGraph the tcrGraph object to convert
 #' @return an object of class 'graphNEL'
-#' 
+#'
 #' @seealso \code{\link[graph]{graphNEL}}
 #' @author Mario G Rosasco, \email{mrosasco@@benaroyaresearch.org}
 #' @importFrom magrittr %>%
@@ -140,60 +140,73 @@ tcrGraphToGraphNEL <- function(tcrGraph){
   return(graphNel)
 }
 
-#' Convert a tcrGraph obect to an igraph object 
-#' 
-#' Converting a tcrGraph to an igraph object enables the use of utility and 
+#' Convert a tcrGraph obect to an igraph object
+#'
+#' Converting a tcrGraph to an igraph object enables the use of utility and
 #' statistics functions from the \code{link[igraph]{igraph}} package.
-#' 
+#'
 #' @param tcrGraph the tcrGraph object to convert
 #' @return an igraph graph object
-#' 
+#'
 #' @seealso \code{link[igraph]{igraph}}
 #' @author Mario G Rosasco, \email{mrosasco@@benaroyaresearch.org}
 #' @importFrom magrittr %>%
 #' @importFrom rlang .data :=
 #' @export
 tcrGraphToIgraph <- function(tcrGraph){
-  if(!is.tcrGraph(tcrGraph)){stop("Object must be a tcrGraph object.")}
-  
-  .logEvent("tcrGraphToIgraph")
-  # create an igraph object
+  if(!is.tcrGraph(tcrGraph)) stop("Object must be a tcrGraph object.")
+  # .logEvent("tcrGraphToIgraph")
+
+  # Keep all edge cols except title; ensure width exists and is numeric
+  edgesTcrGraph <- tcrGraph$edges[, !names(tcrGraph$edges) %in% "title", drop = FALSE]
+  if (!"width" %in% names(edgesTcrGraph)) stop("tcrGraph$edges must contain a 'width' column.")
+  edgesTcrGraph$width <- as.numeric(edgesTcrGraph$width)
+
+  # Mirror width -> weight (igraph standard)
+  edgesTcrGraph$weight <- edgesTcrGraph$width
+
+  verticesTcrGraph <- tcrGraph$nodes[, !names(tcrGraph$nodes) %in% "title", drop = FALSE]
+
   tcrIgraph <- igraph::graph_from_data_frame(
-    d = tcrGraph$edges[,!names(tcrGraph$edges) %in% "title"], 
-    directed = FALSE, 
-    vertices = tcrGraph$nodes[,!names(tcrGraph$nodes) %in% "title"]
+    d = edgesTcrGraph,
+    directed = FALSE,
+    vertices = verticesTcrGraph
   )
-  # simplify (remove duplicate edges and loops)
+
+  # When simplifying, combine numeric attrs sanely
   tcrIgraph <- igraph::simplify(
     graph = tcrIgraph,
     remove.multiple = TRUE,
     remove.loops = TRUE,
-    edge.attr.comb = function(x){unique(x)}
+    edge.attr.comb = list(
+      weight = "mean",
+      width  = "mean",
+      # for any other edge attributes that might exist:
+      "ignore"
+    )
   )
-  
-  return(tcrIgraph)
 }
 
 #' Calculate the degree for each node of a tcrGraph obect
-#' 
+#'
 #' The degree of a node is the number of connections it has to other nodes.
-#' 
+#'
 #' @param tcrGraph the tcrGraph object to calculate the degree of
 #' @return a data frame containing the degree for each node id
-#' 
-#' @examples 
+#'
+#' @examples
 #' \dontrun{
 #' tcrData <- data.frame(
-#'    libid = c("lib000", "lib000"), 
-#'    v_gene = c("TRAV1-1", "TRBV1"), 
-#'    j_gene = c("TRAJ11", "TRBJ1-1"), 
+#'    libid = c("lib000", "lib000"),
+#'    v_gene = c("TRAV1-1", "TRBV1"),
+#'    j_gene = c("TRAJ11", "TRBJ1-1"),
 #'    fake_nt_sequence = c("CAT", "GAT")
 #' )
 #' myGraph <- makeTcrGraph(tcrData, link = "fake_nt_sequence")
-#' tcrGraphDegree(myGraph) 
+#' tcrGraphDegree(myGraph)
 #'        degree     id
-#' node_1      1 node_1      
-#' node_2      1 node_2        
+#' node_1      1 node_1
+#' node_2      1 node_2
 #' }
 #' @author Mario G Rosasco, \email{mrosasco@@benaroyaresearch.org}
 #' @export

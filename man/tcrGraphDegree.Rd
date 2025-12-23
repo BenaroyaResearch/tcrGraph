@@ -18,16 +18,16 @@ The degree of a node is the number of connections it has to other nodes.
 \examples{
 \dontrun{
 tcrData <- data.frame(
-   libid = c("lib000", "lib000"), 
-   v_gene = c("TRAV1-1", "TRBV1"), 
-   j_gene = c("TRAJ11", "TRBJ1-1"), 
+   libid = c("lib000", "lib000"),
+   v_gene = c("TRAV1-1", "TRBV1"),
+   j_gene = c("TRAJ11", "TRBJ1-1"),
    fake_nt_sequence = c("CAT", "GAT")
 )
 myGraph <- makeTcrGraph(tcrData, link = "fake_nt_sequence")
-tcrGraphDegree(myGraph) 
+tcrGraphDegree(myGraph)
        degree     id
-node_1      1 node_1      
-node_2      1 node_2        
+node_1      1 node_1
+node_2      1 node_2
 }
 }
 \author{

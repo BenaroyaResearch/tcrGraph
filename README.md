@@ -2,7 +2,9 @@
 
 A package to facilitate building and analyzing networks of T cell receptors to help better understand clonality, antigen specificity, and other immunological questions.
 
-### Installation
+**NOTE**: The clone calling method implemented in `getClonesFromTcrGraph` was extensively updated in December 2025, to be more in line with standard definitions of clonally expanded T cell populations. Specifically, clones can no longer contain cells with TCR chains that are not part of the clone, and the default limit on beta chains in a clone was reduced to 1 (from 2). 
+
+## Installation
 
 Open an R session, and execute the following code:
 

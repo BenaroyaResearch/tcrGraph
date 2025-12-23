@@ -20,9 +20,9 @@ Accepts a dataframe containing TCR information, and generates a tcrGraph object
 \examples{
 \dontrun{
 tcrData <- data.frame(
-   libid = c("lib000", "lib000"), 
-   v_gene = c("TRAV1-1", "TRBV1"), 
-   j_gene = c("TRAJ11", "TRBJ1-1"), 
+   libid = c("lib000", "lib000"),
+   v_gene = c("TRAV1-1", "TRBV1"),
+   j_gene = c("TRAJ11", "TRBJ1-1"),
    fake_nt_sequence = c("CAT", "GAT")
 )
 makeTcrGraph(tcrData, link = "fake_nt_sequence")
