@@ -111,6 +111,39 @@ with_mock(
 
   }),
 
+  test_that("getClonesFromTcrGraph() terminates and flags a component that cannot be split", {
+    # GIVEN one clone seen in two libs (alpha + beta), and a third lib with that clone's
+    # chains plus a second beta; libs may hold two betas but clones only one
+    testData = data.frame(
+      libid = c("lib000", "lib000", "lib001", "lib001", "lib002", "lib002", "lib002"),
+      v_gene = c("TRAV3", "TRBV2", "TRAV3", "TRBV2", "TRAV3", "TRBV2", "TRBV3"),
+      j_gene = c("TRAJ3", "TRBJ2", "TRAJ3", "TRBJ2", "TRAJ3", "TRBJ2", "TRBJ3"),
+      full_nt_sequence = c("CCC", "DDD", "CCC", "DDD", "CCC", "DDD", "EEE")
+    )
+    # WHEN clones are counted (this looped forever before the fix)
+    testClones = getClonesFromTcrGraph(makeTcrGraph(testData), maxBLib = 2)
+    # THEN the two-chain clone keeps lib000 and lib001, unflagged
+    # AND lib002 is split off on its own and flagged
+    expect_equal(nrow(testClones), 2)
+    expect_equal(sort(testClones$cloneCounts), c(1, 2))
+    expect_equal(testClones$violatesLimits[testClones$cloneCounts == 2], FALSE)
+    expect_equal(testClones$violatesLimits[testClones$cloneCounts == 1], TRUE)
+    expect_equal(testClones$libs[testClones$violatesLimits], "lib002")
+
+    # GIVEN two identical libs that both carry two betas, and nothing else
+    testData = data.frame(
+      libid = rep(c("lib000", "lib001"), each = 3),
+      v_gene = rep(c("TRAV3", "TRBV2", "TRBV3"), 2),
+      j_gene = rep(c("TRAJ3", "TRBJ2", "TRBJ3"), 2),
+      full_nt_sequence = rep(c("CCC", "DDD", "EEE"), 2)
+    )
+    # WHEN clones are counted in "full" format
+    testClones = getClonesFromTcrGraph(makeTcrGraph(testData), maxBLib = 2, format = "full")
+    # THEN both libs form one flagged clone
+    expect_equal(length(unique(testClones$cloneId)), 1)
+    expect_true(all(testClones$violatesLimits))
+  }),
+
   # set env for mocking private function
   .env = "tcrGraph"
 )
