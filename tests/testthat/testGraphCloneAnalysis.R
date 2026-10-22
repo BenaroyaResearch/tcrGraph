@@ -3,9 +3,11 @@ library(testthat)
 
 context("Clone Counting")
 
-with_mock(
+with_mocked_bindings(
   # mock the internal function that calls the API to prevent network requirement
   .logEvent = function(event){return(TRUE)},
+  .package = "tcrGraph",
+  code = {
 
   test_that("getClonesFromTcrGraph() counts the correct number of clones when filtering isn't necessary", {
     # GIVEN some TCR data
@@ -43,7 +45,7 @@ with_mock(
     # AND the correct number of clones and clone counts is reported
     expect_equal(nrow(testClones), testNClones)
     expect_equal(testClones$cloneCounts, testClonesCts)
-  }),
+  })
 
   test_that("getClonesFromTcrGraph() counts the correct number of clones when filtering at the graph level", {
     # GIVEN a tcrGraph object describing one clone observed twice
@@ -109,7 +111,7 @@ with_mock(
     expect_equal(testClones$cloneCounts, testClonesCts)
     #############################################################
 
-  }),
+  })
 
   test_that("getClonesFromTcrGraph() terminates and flags a component that cannot be split", {
     # GIVEN one clone seen in two libs (alpha + beta), and a third lib with that clone's
@@ -142,7 +144,7 @@ with_mock(
     # THEN both libs form one flagged clone
     expect_equal(length(unique(testClones$cloneId)), 1)
     expect_true(all(testClones$violatesLimits))
-  }),
+  })
 
   test_that("getClonesFromTcrGraph() flags clones whose extra chains never occur together in one lib", {
     # GIVEN two alphas that share a beta, but no lib carries both alphas
@@ -197,8 +199,6 @@ with_mock(
     # THEN it is not flagged
     testClones = getClonesFromTcrGraph(makeTcrGraph(testData))
     expect_false(testClones$unpairedMultiChain)
-  }),
-
-  # set env for mocking private function
-  .env = "tcrGraph"
+  })
+  }
 )
