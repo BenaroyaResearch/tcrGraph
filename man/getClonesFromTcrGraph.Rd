@@ -61,7 +61,13 @@ a data frame object. If \code{tcrData} is a tcrGraph object, the link used to ge
 \item{verbose}{logical, whether to provide messages on status of clone identification. Default is FALSE.}
 }
 \value{
-A data frame of information about the clones detected in the TCR graph
+A data frame of information about the clones detected in the TCR graph. Column \code{violatesLimits} is TRUE for a
+clone that exceeds the \code{max[A,B,D,G]Graph} limits but cannot be split, because every lib in it carries every chain
+(e.g. a single lib with two beta chains when \code{maxBLib = 2} and \code{maxBGraph = 1}). Such clones are kept and flagged,
+not removed. Column \code{unpairedMultiChain} is TRUE for a clone with more than one distinct chain of some type where at
+least one of those chains is never seen in a lib together with another chain of the same type; \code{unpairedChainTypes}
+names those types (e.g. "TRA"). Two alphas that share a beta but never occur in the same lib may be two clones with a
+shared beta rather than one dual-alpha clone.
 }
 \description{
 Given TCR data, identify clones and count the number of occurrences for each clone. A clone is defined as a maximal subgraph

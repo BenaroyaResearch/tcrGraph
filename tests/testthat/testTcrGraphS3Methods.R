@@ -23,9 +23,11 @@ testEdges = data.frame(
 )
 
 context("S3 Class Constructor")
-with_mock(
+with_mocked_bindings(
   # mock the internal function that calls the API to prevent network requirement
   .logEvent = function(event){return(TRUE)},
+  .package = "tcrGraph",
+  code = {
   
   test_that("The S3 constructor generates a valid tcrGraph object when given valid data", {
     # GIVEN some valid TCR, node, and edge data in data frames
@@ -44,7 +46,7 @@ with_mock(
     )
     # THEN the object returned will be of class tcrGraph
     expect_s3_class(testGraph, "tcrGraph")
-  }),
+  })
   
   test_that("The S3 constructor throws an error when given data with missing fields", {
     # GIVEN some TCR, node, and edge data in data frames
@@ -67,7 +69,7 @@ with_mock(
         )
       )
     }
-  }),
+  })
   
   test_that("The S3 constructor throws an error when given incomplete node information", {
     # GIVEN some TCR, node, and edge data in data frames
@@ -90,7 +92,7 @@ with_mock(
         )
       )
     }
-  }),
+  })
   
   test_that("The S3 constructor throws an error when given incomplete edge information", {
     # GIVEN some TCR, node, and edge data in data frames
@@ -113,7 +115,7 @@ with_mock(
         )
       )
     }
-  }),
+  })
   
   test_that("The S3 constructor throws an error when given node groups aren't TCR genes", {
     # GIVEN some TCR, node, and edge data in data frames
@@ -136,7 +138,7 @@ with_mock(
         link = testLinkField
       )
     )
-  }),
+  })
   
   test_that("The S3 constructor throws an error when nodes and edges are discordant", {
     # GIVEN some TCR, node, and edge data in data frames
@@ -159,10 +161,8 @@ with_mock(
         link = testLinkField
       )
     )
-  }),
-  
-  # set env for mocking private function
-  .env = "tcrGraph"
+  })
+  }
 )
 
 # GIVEN some TCR data in a data frame with fields named 
@@ -176,9 +176,11 @@ testData = data.frame(
 )  
 
 context("S3 Class Generic Methods")
-with_mock(
+with_mocked_bindings(
   # mock the internal function that calls the API to prevent network requirement
   .logEvent = function(event){return(TRUE)},
+  .package = "tcrGraph",
+  code = {
   
   test_that("The S3 as.data.frame method converts a tcrGraph to a data frame", {
     # GIVEN a valid tcrGraph object
@@ -188,7 +190,7 @@ with_mock(
     testDf = as.data.frame(testGraph)
     # THEN the returned object will be of class data.frame
     expect_s3_class(testDf, "data.frame")
-  }),
+  })
   
   test_that("The S3 print method prints tcrGraph summary data", {
     # GIVEN a valid tcrGraph object
@@ -197,8 +199,6 @@ with_mock(
     # WHEN a generic method is called to print the tcrGraph object
     # THEN summary data will be printed for the object
     expect_output(print(testGraph), "An object of class 'tcrGraph'")
-  }),
-  
-  # set env for mocking private function
-  .env = "tcrGraph"
+  })
+  }
 )

@@ -34,7 +34,13 @@
 #' a data frame object. If \code{tcrData} is a tcrGraph object, the link used to generate the tcrGraph is used here.
 #'
 #' @param verbose logical, whether to provide messages on status of clone identification. Default is FALSE.
-#' @return A data frame of information about the clones detected in the TCR graph
+#' @return A data frame of information about the clones detected in the TCR graph. Column \code{violatesLimits} is TRUE for a
+#' clone that exceeds the \code{max[A,B,D,G]Graph} limits but cannot be split, because every lib in it carries every chain
+#' (e.g. a single lib with two beta chains when \code{maxBLib = 2} and \code{maxBGraph = 1}). Such clones are kept and flagged,
+#' not removed. Column \code{unpairedMultiChain} is TRUE for a clone with more than one distinct chain of some type where at
+#' least one of those chains is never seen in a lib together with another chain of the same type; \code{unpairedChainTypes}
+#' names those types (e.g. "TRA"). Two alphas that share a beta but never occur in the same lib may be two clones with a
+#' shared beta rather than one dual-alpha clone.
 #'
 #' @importFrom stringr str_replace
 #' @export
@@ -180,6 +186,22 @@ getClonesFromTcrGraph <- function(
     tooManyUniqueA || tooManyUniqueB || tooManyUniqueD || tooManyUniqueG
   }
 
+  # helper: chain types for which a clone holds more than one distinct chain, but some
+  # chain of that type is never seen in one lib together with another chain of the same
+  # type. Two alphas sharing a beta, with no lib carrying both alphas, may be two
+  # clones that share a beta rather than one dual-alpha clone.
+  unpairedChainTypes <- function(currTcrData) {
+    types <- character(0)
+    for (currType in sort(unique(currTcrData$chainType))) {
+      typeData <- unique(currTcrData[currTcrData$chainType == currType, c("libid", "id")])
+      if (length(unique(typeData$id)) < 2L) next
+      chainsPerLib <- table(typeData$libid)
+      pairedChains <- unique(typeData$id[typeData$libid %in% names(chainsPerLib)[chainsPerLib > 1L]])
+      if (!all(unique(typeData$id) %in% pairedChains)) types <- c(types, currType)
+    }
+    types
+  }
+
   # ---------------------------------------------------------------------------
   # Iteratively split subgraphs by moving libs that support the weakest edge
   # of violating components into new subgraph pools.
@@ -187,6 +209,9 @@ getClonesFromTcrGraph <- function(
   # this loop runs once, and reruns if any subgraph gets split
   # set a tracker so we don't redo the whole thing from start every time we split a subgraph
   maxSubgraphIdChecked <- 0L
+  # subgraph pools holding one component that violates the limits but cannot be split
+  # by moving libs (every lib in it carries every chain); checked once, never again
+  unsplittableIds <- integer(0)
   repeat {
     if(verbose && exists("changed") && changed)
       message("Split subgraph ", currSubgraphId, " because it violated clone parameters.")
@@ -202,6 +227,7 @@ getClonesFromTcrGraph <- function(
       maxSubgraphIdChecked <- currSubgraphId - 1L # this allows the process to restart from same point
 
       # message("Checking subgraph ", currSubgraphId, ".")
+      if (currSubgraphId %in% unsplittableIds) next
 
       subDf <- cloneDf[cloneDf$subgraphId == currSubgraphId, , drop = FALSE]
       if (nrow(subDf) == 0L) next
@@ -246,6 +272,27 @@ getClonesFromTcrGraph <- function(
         }
 
         newId <- max(cloneDf$subgraphId) + 1L
+
+        # If every lib in this component supports the weakest edge, every lib carries
+        # every chain (each edge's weight is at most the number of libs), so moving
+        # libs cannot split it: the moved pool would be the same component, violate
+        # again, and be moved again forever. Isolate it in its own pool, mark it
+        # unsplittable, and move on.
+        componentLibs <- unique(subGraph$data$libid[
+          subGraph$data$id %in% igraph::V(currSubgraph)$name])
+        if (all(componentLibs %in% libsToMove)) {
+          cloneDf$subgraphId[
+            cloneDf$libid %in% componentLibs & cloneDf$subgraphId == currSubgraphId
+          ] <- newId
+          unsplittableIds <- c(unsplittableIds, newId)
+          if (verbose)
+            message("Subgraph ", currSubgraphId, " has a component that violates clone ",
+                    "parameters but cannot be split (libs: ",
+                    paste(componentLibs, collapse = ", "), "); flagged with violatesLimits.")
+          changed <- TRUE
+          break
+        }
+
         cloneDf$subgraphId[
           cloneDf$libid %in% libsToMove & cloneDf$subgraphId == currSubgraphId
         ] <- newId
@@ -296,11 +343,16 @@ getClonesFromTcrGraph <- function(
       if (nrow(currTcrData) == 0L)
         next
 
+      currUnpairedTypes <- unpairedChainTypes(currTcrData)
+
       if(format == "compressed"){
         currCloneSummary <- dplyr::summarise(
           currTcrData,
           cloneId     = paste0("clone", cloneIndex),
           cloneCounts = length(unique(.data$libid)),
+          violatesLimits = currSubgraphId %in% unsplittableIds,
+          unpairedMultiChain = length(currUnpairedTypes) > 0L,
+          unpairedChainTypes = paste(currUnpairedTypes, collapse = ", "),
           libs        = paste(unique(.data$libid), collapse = ", "),
           vGenes      = paste(unique(.data$v_gene), collapse = ", "),
           jGenes      = paste(unique(.data$j_gene), collapse = ", "),
@@ -310,7 +362,10 @@ getClonesFromTcrGraph <- function(
         currCloneSummary <- dplyr::mutate(
           currTcrData,
           cloneCounts = length(unique(currTcrData$libid)),
-          cloneId     = paste0("clone", cloneIndex)
+          cloneId     = paste0("clone", cloneIndex),
+          violatesLimits = currSubgraphId %in% unsplittableIds,
+          unpairedMultiChain = length(currUnpairedTypes) > 0L,
+          unpairedChainTypes = paste(currUnpairedTypes, collapse = ", ")
         )
       } else {
         stop("Invalid 'format' argument. Format must be 'compressed', 'full', or 'tcrGraph'.")
