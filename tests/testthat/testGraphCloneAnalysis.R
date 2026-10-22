@@ -144,6 +144,61 @@ with_mock(
     expect_true(all(testClones$violatesLimits))
   }),
 
+  test_that("getClonesFromTcrGraph() flags clones whose extra chains never occur together in one lib", {
+    # GIVEN two alphas that share a beta, but no lib carries both alphas
+    testData = data.frame(
+      libid = c("lib000", "lib000", "lib001", "lib001", "lib002"),
+      v_gene = c("TRAV1", "TRBV1", "TRAV2", "TRBV1", "TRBV1"),
+      j_gene = c("TRAJ1", "TRBJ1", "TRAJ2", "TRBJ1", "TRBJ1"),
+      full_nt_sequence = c("AAA", "BBB", "CCC", "BBB", "BBB")
+    )
+    # WHEN clones are counted with default parameters (up to two alphas per clone)
+    testClones = getClonesFromTcrGraph(makeTcrGraph(testData))
+    # THEN they form one clone, flagged as unpaired on the alpha chain
+    expect_equal(nrow(testClones), 1)
+    expect_true(testClones$unpairedMultiChain)
+    expect_equal(testClones$unpairedChainTypes, "TRA")
+
+    # GIVEN the same data plus one lib that carries both alphas
+    testData = rbind(testData, data.frame(
+      libid = c("lib003", "lib003", "lib003"),
+      v_gene = c("TRAV1", "TRAV2", "TRBV1"),
+      j_gene = c("TRAJ1", "TRAJ2", "TRBJ1"),
+      full_nt_sequence = c("AAA", "CCC", "BBB")
+    ))
+    # WHEN clones are counted
+    testClones = getClonesFromTcrGraph(makeTcrGraph(testData))
+    # THEN the dual-alpha clone is not flagged
+    expect_equal(nrow(testClones), 1)
+    expect_false(testClones$unpairedMultiChain)
+    expect_equal(testClones$unpairedChainTypes, "")
+
+    # GIVEN three alphas on one beta, where only two of them occur together in a lib
+    testData = data.frame(
+      libid = c("lib000", "lib000", "lib000", "lib001", "lib001"),
+      v_gene = c("TRAV1", "TRAV2", "TRBV1", "TRAV3", "TRBV1"),
+      j_gene = c("TRAJ1", "TRAJ2", "TRBJ1", "TRAJ3", "TRBJ1"),
+      full_nt_sequence = c("AAA", "CCC", "BBB", "DDD", "BBB")
+    )
+    # WHEN clones are counted allowing three alphas, in full format
+    testClones = getClonesFromTcrGraph(makeTcrGraph(testData), maxA = 3, format = "full")
+    # THEN every row of the clone carries the flag
+    expect_equal(length(unique(testClones$cloneId)), 1)
+    expect_true(all(testClones$unpairedMultiChain))
+    expect_true(all(testClones$unpairedChainTypes == "TRA"))
+
+    # GIVEN a clone with one alpha and one beta
+    testData = data.frame(
+      libid = c("lib000", "lib000", "lib001", "lib001"),
+      v_gene = c("TRAV1", "TRBV1", "TRAV1", "TRBV1"),
+      j_gene = c("TRAJ1", "TRBJ1", "TRAJ1", "TRBJ1"),
+      full_nt_sequence = c("AAA", "BBB", "AAA", "BBB")
+    )
+    # THEN it is not flagged
+    testClones = getClonesFromTcrGraph(makeTcrGraph(testData))
+    expect_false(testClones$unpairedMultiChain)
+  }),
+
   # set env for mocking private function
   .env = "tcrGraph"
 )
