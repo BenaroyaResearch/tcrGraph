@@ -1,3 +1,12 @@
+tcrGraph v0.2.3 (Release date: 2026-10-22)
+==============
+
+Changes:
+
+* `getClonesFromTcrGraph()` no longer loops forever when a component exceeds the `max[A,B,D,G]Graph` limits but cannot be split (every lib in it carries every chain, e.g. a lib with two beta chains when `maxBLib = 2` and `maxBGraph = 1`). Such clones are kept and flagged in a new `violatesLimits` column.
+* `getClonesFromTcrGraph()` returns new columns `unpairedMultiChain` and `unpairedChainTypes`, flagging clones with more than one chain of a type where some chain is never seen in a lib together with another chain of that type (e.g. two alphas sharing a beta, never in the same cell).
+* Tests use `with_mocked_bindings()` in place of `with_mock()`, which is defunct in testthat 3.2.0.
+
 tcrGraph v0.2.1 (Release date: 2020-06-22)
 ==============
 
